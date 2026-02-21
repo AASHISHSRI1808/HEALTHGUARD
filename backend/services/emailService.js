@@ -1,30 +1,40 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false,
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   }
 });
 
+// Verify connection on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.log('❌ Email Error:', error);
+  } else {
+    console.log('✅ Email Server Ready');
+  }
+});
+
 const emailService = {
+
+  // ── Send Prediction Report to Patient ──────────────────
   async sendPredictionReport(email, name, prediction) {
-    const riskColor = prediction.result.riskLevel === 'High' ? '#ef4444' : 
+    const riskColor = prediction.result.riskLevel === 'High' ? '#ef4444' :
+                      prediction.result.riskLevel === 'Very High' ? '#dc2626' :
                       prediction.result.riskLevel === 'Moderate' ? '#f59e0b' : '#22c55e';
-    
+
     const html = `
     <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
-      <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
-        <h1 style="color: #60a5fa; margin: 0; font-size: 28px; letter-spacing: 2px;">🏥 HEALTH GUARD</h1>
-        <p style="color: #94a3b8; margin: 8px 0 0;">AI-Powered Disease Prediction Report</p>
+      <div style="background: linear-gradient(135deg, #0b1a12 0%, #0d2218 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <h1 style="color: #10b981; margin: 0; font-size: 28px; letter-spacing: 2px;">🏥 HEALTH GUARD</h1>
+        <p style="color: #6b9e82; margin: 8px 0 0;">AI-Powered Disease Prediction Report</p>
       </div>
       <div style="padding: 30px; background: white;">
         <p style="color: #334155;">Dear <strong>${name}</strong>,</p>
         <p style="color: #64748b;">Your health prediction analysis has been completed. Please find the details below:</p>
-        
+
         <div style="background: #f1f5f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px; color: #64748b; font-size: 13px;">Report ID</td><td style="padding: 8px; font-weight: bold; color: #1e293b;">${prediction.reportId}</td></tr>
@@ -47,8 +57,8 @@ const emailService = {
           </ul>
         </div>
       </div>
-      <div style="background: #f1f5f9; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
-        <p style="color: #94a3b8; font-size: 12px; margin: 0;">Health Guard • AI Healthcare Platform • ${new Date().getFullYear()}</p>
+      <div style="background: #0b1a12; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
+        <p style="color: #3d7055; font-size: 12px; margin: 0;">Health Guard • AI Healthcare Platform • ${new Date().getFullYear()} • healthguard.com</p>
       </div>
     </div>`;
 
@@ -60,63 +70,168 @@ const emailService = {
     });
   },
 
+  // ── Send Appointment Booked Confirmation to Patient ────
   async sendAppointmentConfirmation(appointment) {
     const patient = appointment.patientId;
-    const doctor = appointment.doctorId;
+    const doctor  = appointment.doctorId;
 
     const html = `
     <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #0f172a, #1e3a5f); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
-        <h1 style="color: #60a5fa; margin: 0;">✅ Appointment Confirmed</h1>
-        <p style="color: #94a3b8;">Health Guard</p>
+      <div style="background: linear-gradient(135deg, #0b1a12, #0d2218); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <h1 style="color: #10b981; margin: 0;">📅 Appointment Booked!</h1>
+        <p style="color: #6b9e82;">Health Guard</p>
       </div>
       <div style="padding: 30px; background: white;">
-        <p>Dear <strong>${patient.name}</strong>, your appointment has been successfully booked!</p>
-        
+        <p style="color: #334155;">Dear <strong>${patient.name}</strong>, your appointment has been successfully booked!</p>
+
         <div style="background: #f1f5f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
           <h3 style="color: #1e293b; margin-top: 0;">Appointment Details</h3>
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px; color: #64748b;">Doctor</td><td style="padding: 8px; font-weight: bold;">Dr. ${doctor.name}</td></tr>
             <tr><td style="padding: 8px; color: #64748b;">Specialization</td><td style="padding: 8px;">${doctor.specialization}</td></tr>
-            <tr><td style="padding: 8px; color: #64748b;">Hospital</td><td style="padding: 8px;">${doctor.hospitalName}</td></tr>
+            <tr><td style="padding: 8px; color: #64748b;">Hospital</td><td style="padding: 8px;">${doctor.hospitalName}, ${doctor.city}</td></tr>
             <tr><td style="padding: 8px; color: #64748b;">Date</td><td style="padding: 8px; font-weight: bold;">${new Date(appointment.appointmentDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
             <tr><td style="padding: 8px; color: #64748b;">Time</td><td style="padding: 8px; font-weight: bold;">${appointment.timeSlot}</td></tr>
             <tr><td style="padding: 8px; color: #64748b;">Payment</td><td style="padding: 8px;"><span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 13px;">Paid ₹${appointment.amount}</span></td></tr>
           </table>
         </div>
 
-        <a href="https://maps.google.com?q=${encodeURIComponent(doctor.hospitalName + ' ' + doctor.city)}" 
-           style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; margin: 10px 0;">
-          📍 View on Google Maps
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-top: 16px;">
+          <p style="margin: 0; color: #166534; font-size: 13px;">⏳ Your appointment is <strong>Pending</strong> and will be confirmed by the doctor. You will receive another email once it is confirmed.</p>
+        </div>
+
+        <a href="https://maps.google.com?q=${encodeURIComponent(doctor.hospitalName + ' ' + doctor.city)}"
+           style="display: inline-block; margin-top: 20px; background: #059669; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px;">
+          📍 View Hospital on Google Maps
         </a>
+      </div>
+      <div style="background: #0b1a12; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
+        <p style="color: #3d7055; font-size: 12px; margin: 0;">Health Guard • AI Healthcare Platform • ${new Date().getFullYear()} • healthguard.com</p>
       </div>
     </div>`;
 
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: patient.email,
-      subject: 'Health Guard – Appointment Confirmation',
+      subject: 'Health Guard – Appointment Booked Successfully',
       html
     });
   },
 
-  async sendDoctorApprovalEmail(email, name, status, reason = '') {
-    const isApproved = status === 'approved';
+  // ── Send Status Update Email to Patient ────────────────
+  // Called when doctor Confirms, Completes, or Cancels appointment
+  async sendAppointmentStatusUpdate(appointment, newStatus) {
+    const patient = appointment.patientId;
+    const doctor  = appointment.doctorId;
+
+    if (!patient?.email) return;
+
+    const configs = {
+      Confirmed: {
+        title:    '✅ Appointment Confirmed!',
+        subtitle: 'Your appointment has been confirmed by the doctor',
+        color:    '#22c55e',
+        bgColor:  '#f0fdf4',
+        border:   '#bbf7d0',
+        message:  `Your appointment with <strong>Dr. ${doctor?.name}</strong> has been <strong style="color:#22c55e;">confirmed</strong>. Please be on time and carry any relevant medical reports.`,
+        tip:      `📍 ${doctor?.hospitalName}, ${doctor?.city} — Please arrive 10 minutes early.`
+      },
+      Completed: {
+        title:    '🏁 Appointment Completed',
+        subtitle: 'Your consultation has been marked complete',
+        color:    '#3b82f6',
+        bgColor:  '#eff6ff',
+        border:   '#bfdbfe',
+        message:  `Your consultation with <strong>Dr. ${doctor?.name}</strong> has been <strong style="color:#3b82f6;">marked as completed</strong>. We hope you had a great experience. Please follow up on the recommendations!`,
+        tip:      '⭐ Thank you for using HealthGuard. We value your feedback!'
+      },
+      Cancelled: {
+        title:    '❌ Appointment Cancelled',
+        subtitle: 'Your appointment has been cancelled',
+        color:    '#ef4444',
+        bgColor:  '#fef2f2',
+        border:   '#fecaca',
+        message:  `Your appointment with <strong>Dr. ${doctor?.name}</strong> has been <strong style="color:#ef4444;">cancelled</strong>. We apologize for the inconvenience. Please book a new appointment at your convenience.`,
+        tip:      '📅 You can book a new appointment anytime on HealthGuard.'
+      }
+    };
+
+    const cfg = configs[newStatus];
+    if (!cfg) return;
+
     const html = `
     <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #0f172a, #1e3a5f); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
-        <h1 style="color: ${isApproved ? '#60a5fa' : '#f87171'}; margin: 0;">
-          ${isApproved ? '✅ Application Approved' : '❌ Application Rejected'}
-        </h1>
-        <p style="color: #94a3b8;">Health Guard Doctor Registration</p>
+      <div style="background: linear-gradient(135deg, #0b1a12, #0d2218); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <h1 style="color: ${cfg.color}; margin: 0;">${cfg.title}</h1>
+        <p style="color: #6b9e82; margin: 8px 0 0;">${cfg.subtitle}</p>
       </div>
       <div style="padding: 30px; background: white;">
-        <p>Dear Dr. <strong>${name}</strong>,</p>
-        ${isApproved 
-          ? `<p>Congratulations! Your doctor registration has been <strong style="color: #22c55e;">approved</strong>. You can now login to the Health Guard platform and start using the Doctor Dashboard.</p>`
-          : `<p>We regret to inform you that your doctor registration has been <strong style="color: #ef4444;">rejected</strong>.${reason ? `<br><strong>Reason:</strong> ${reason}` : ''}</p><p>Please contact our support team for more information.</p>`
+        <p style="color: #334155;">Dear <strong>${patient.name}</strong>,</p>
+        <p style="color: #64748b; line-height: 1.7;">${cfg.message}</p>
+
+        <div style="background: #f1f5f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <h3 style="color: #1e293b; margin-top: 0;">Appointment Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px; color: #64748b;">Doctor</td><td style="padding: 8px; font-weight: bold;">Dr. ${doctor?.name}</td></tr>
+            <tr><td style="padding: 8px; color: #64748b;">Specialization</td><td style="padding: 8px;">${doctor?.specialization}</td></tr>
+            <tr><td style="padding: 8px; color: #64748b;">Hospital</td><td style="padding: 8px;">${doctor?.hospitalName}, ${doctor?.city}</td></tr>
+            <tr><td style="padding: 8px; color: #64748b;">Date</td><td style="padding: 8px; font-weight: bold;">${new Date(appointment.appointmentDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
+            <tr><td style="padding: 8px; color: #64748b;">Time</td><td style="padding: 8px; font-weight: bold;">${appointment.timeSlot}</td></tr>
+            <tr><td style="padding: 8px; color: #64748b;">Status</td><td style="padding: 8px;"><span style="background: ${cfg.color}20; color: ${cfg.color}; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 13px;">${newStatus}</span></td></tr>
+            <tr><td style="padding: 8px; color: #64748b;">Amount</td><td style="padding: 8px; font-weight: bold;">₹${appointment.amount}</td></tr>
+          </table>
+        </div>
+
+        <div style="background: ${cfg.bgColor}; border: 1px solid ${cfg.border}; border-radius: 8px; padding: 14px;">
+          <p style="margin: 0; color: #334155; font-size: 13px;">${cfg.tip}</p>
+        </div>
+
+        ${newStatus === 'Cancelled' ? `
+        <a href="${process.env.FRONTEND_URL}/doctors"
+           style="display: inline-block; margin-top: 20px; background: #059669; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">
+          Book a New Appointment →
+        </a>` : ''}
+      </div>
+      <div style="background: #0b1a12; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
+        <p style="color: #3d7055; font-size: 12px; margin: 0;">Health Guard • AI Healthcare Platform • ${new Date().getFullYear()} • healthguard.com</p>
+      </div>
+    </div>`;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: patient.email,
+      subject: `Health Guard – Appointment ${newStatus}: Dr. ${doctor?.name}`,
+      html
+    });
+  },
+
+  // ── Send Doctor Approval / Rejection Email ─────────────
+  async sendDoctorApprovalEmail(email, name, status, reason = '') {
+    const isApproved = status === 'approved';
+
+    const html = `
+    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #0b1a12, #0d2218); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+        <h1 style="color: ${isApproved ? '#10b981' : '#f87171'}; margin: 0;">
+          ${isApproved ? '✅ Application Approved!' : '❌ Application Rejected'}
+        </h1>
+        <p style="color: #6b9e82;">Health Guard Doctor Registration</p>
+      </div>
+      <div style="padding: 30px; background: white;">
+        <p style="color: #334155;">Dear Dr. <strong>${name}</strong>,</p>
+        ${isApproved
+          ? `<p style="color: #64748b;">Congratulations! Your doctor registration has been <strong style="color: #22c55e;">approved</strong>. You can now login to the Health Guard platform and start managing patients via your Doctor Dashboard.</p>
+             <a href="${process.env.FRONTEND_URL}/login"
+                style="display: inline-block; margin-top: 16px; background: #059669; color: white; text-decoration: none; padding: 13px 28px; border-radius: 8px; font-weight: bold;">
+               Login to Dashboard →
+             </a>`
+          : `<p style="color: #64748b;">We regret to inform you that your doctor registration has been <strong style="color: #ef4444;">rejected</strong>.</p>
+             ${reason ? `<p style="color: #64748b;"><strong>Reason:</strong> ${reason}</p>` : ''}
+             <p style="color: #64748b;">Please contact our support team at support@healthguard.com for more information.</p>`
         }
-        ${isApproved ? `<a href="${process.env.FRONTEND_URL}/login" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; margin: 10px 0;">Login to Dashboard</a>` : ''}
+      </div>
+      <div style="background: #0b1a12; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
+        <p style="color: #3d7055; font-size: 12px; margin: 0;">Health Guard • AI Healthcare Platform • ${new Date().getFullYear()} • healthguard.com</p>
       </div>
     </div>`;
 
@@ -127,6 +242,7 @@ const emailService = {
       html
     });
   }
+
 };
 
 module.exports = emailService;
